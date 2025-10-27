@@ -1,0 +1,11 @@
+{
+  "name": "podvigi-number-bot",
+  "version": "1.0.0",
+  "type": "module",
+  "private": true,
+  "dependencies": {
+    "node-fetch": "^3.3.2",
+    "telegraf": "^4.16.3",
+    "@upstash/redis": "^1.31.6"
+  }
+}
