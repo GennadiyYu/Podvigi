@@ -60,7 +60,10 @@ bot.action("check_sub", async (ctx) => {
 
   const number = await assignNumberIfNeeded(ctx.from);
   await ctx.editMessageText(
-    `Подписка подтверждена! Твой уникальный номер: <b>#${number}</b>\n\n` +
+    `Подписка подтверждена! Твой уникальный номер: 
+    
+    <b> ${number}</b>\n\n` +
+    
       `Номер закреплён за твоим аккаунтом и повторно выдан не будет.`,
     { parse_mode: "HTML" }
   );
