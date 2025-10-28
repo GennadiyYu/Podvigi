@@ -32,9 +32,9 @@ async function isSubscribed(ctx) {
 
 bot.start(async (ctx) => {
   await ctx.reply(
-    `Привет! Я выдам тебе уникальный номер после проверки подписки на <b>${CHANNEL}</b>\n\n` +
-      `1) Подпишись на канал ${CHANNEL}\n` +
-      `2) Нажми кнопку ниже для проверки подписки`,
+    `Приветствую! Я выдам вам уникальный номер после проверки подписки на <b>${CHANNEL}</b>\n\n` +
+      `1) Подпишитесь на канал ${CHANNEL}\n` +
+      `2) Нажмите кнопку ниже для проверки подписки`,
     {
       parse_mode: "HTML",
       reply_markup: {
@@ -47,7 +47,7 @@ bot.start(async (ctx) => {
 bot.action("check_sub", async (ctx) => {
   if (!(await isSubscribed(ctx))) {
     await ctx.editMessageText(
-      `Подписка не найдена. Убедись, что ты подписан на <b>${CHANNEL}</b> и попробуй ещё раз.`,
+      `Подписка не найдена. Убедитесь, что вы подписаны на <b>${CHANNEL}</b> и попробуйте ещё раз.`,
       {
         parse_mode: "HTML",
         reply_markup: {
@@ -60,11 +60,11 @@ bot.action("check_sub", async (ctx) => {
 
   const number = await assignNumberIfNeeded(ctx.from);
   await ctx.editMessageText(
-    `Подписка подтверждена! Твой уникальный номер: 
+    `Подписка подтверждена! Ваш уникальный номер: 
     
     <b> ${number}</b>\n\n` +
     
-      `Номер закреплён за твоим аккаунтом и повторно выдан не будет.`,
+      `Номер закреплён за вашим аккаунтом и повторно выдан не будет.`,
     { parse_mode: "HTML" }
   );
 });
