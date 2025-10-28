@@ -13,15 +13,78 @@ const adminCommands=[{command:"issued_count",description:"Сколько ном�
 async function setCommandsForChat(ctx,isAdminFlag){ const scope={type:"chat",chat_id:ctx.chat.id}; const commands=isAdminFlag?[...defaultCommands,...adminCommands]:defaultCommands; try{ await ctx.telegram.setMyCommands(commands,{scope}); }catch(e){ console.warn("setMyCommands error:",e.message); } }
 bot.telegram.setMyCommands(defaultCommands).catch(()=>{});
 async function isSubscribed(ctx){ try{ const res=await ctx.telegram.getChatMember(CHANNEL,ctx.from.id); return ["member","administrator","creator"].includes(res.status);}catch(e){ console.warn("getChatMember error",e.message); return false; } }
-bot.start(async ctx=>{ await setCommandsForChat(ctx,isAdmin(ctx)); await ctx.reply(`Приветствую! Я выдам вам уникальный номер после проверки подписки на <b>${CHANNEL}</b>\n\n`+`1) Подпишитесьсь на канал ${CHANNEL}\n`+`2) Нажмите кнопку ниже для проверки подписки`,{parse_mode:"HTML",reply_markup:{inline_keyboard:[[ {text:"✅ Проверить подписку",callback_data:"check_sub"} ]]}}); });
-bot.command("refresh_menu", async ctx=>{ if(!isAdmin(ctx)) return; await setCommandsForChat(ctx,true); await ctx.reply("Меню администратора обновлено ✅"); });
-bot.action("check_sub", async ctx=>{ if(!(await isSubscribed(ctx))){ await ctx.editMessageText(`Подписка не найдена. Убедитесь, что вы подписаны на <b>${CHANNEL}</b> и попробуйте ещё раз.`,{parse_mode:"HTML",reply_markup:{inline_keyboard:[[ {text:"✅ Проверить подписку",callback_data:"check_sub"} ]]}}); return; } const number=await assignNumberIfNeeded(ctx.from); await ctx.editMessageText(`Подписка подтверждена! Ваш уникальный номер: 
+bot.start(async (ctx) => {
+  await setCommandsForChat(ctx, isAdmin(ctx));
+  await ctx.reply(
+    `Приветствую! Я выдам Вам уникальный номер после проверки подписки на <b>${CHANNEL}</b>\n\n` +
+      `1) Подпишитесь на канал ${CHANNEL}\n` +
+      `2) Нажмите кнопку ниже для проверки подписки`,
+    {
+      parse_mode: "HTML",
+      reply_markup: {
+        inline_keyboard: [[{ text: "✅ Проверить подписку", callback_data: "check_sub" }]],
+      },
+    }
+  );
+});
 
-<b>${number}</b>\n\n`+`
-Номер закреплён за вашим аккаунтом и повторно выдан не будет.`,{parse_mode:"HTML"});
+bot.command("refresh_menu", async (ctx) => {
+  if (!isAdmin(ctx)) return;
+  await setCommandsForChat(ctx, true);
+  await ctx.reply("Меню администратора обновлено ✅");
+});
 
-await ctx.reply("🎉 Спасибо за участие! Розыгрыш призов проводится ежедневно с 31 октября по 8 ноября в 12:00 по мск в телеграм-канале @podvigi – не пропустите!");
+bot.action("check_sub", async (ctx) => {
+  if (!(await isSubscribed(ctx))) {
+    await ctx.editMessageText(
+      `Подписка не найдена. Убедитесь, что Вы подписаны на <b>${CHANNEL}</b> и попробуйте ещё раз.`,
+      {
+        parse_mode: "HTML",
+        reply_markup: {
+          inline_keyboard: [[{ text: "✅ Проверить подписку", callback_data: "check_sub" }]],
+        },
+      }
+    );
+    return;
+  }
 
-bot.command("issued_count", async ctx=>{ if(!isAdmin(ctx)) return; const total=await countIssued(); await ctx.reply(`Выдано номеров: <b>${total}</b>`,{parse_mode:"HTML"}); });
-bot.command("whois", async ctx=>{ if(!isAdmin(ctx)) return; const text=ctx.message.text||""; const m=text.match(/\/(?:whois)\s+(\d+)/i); if(!m) return ctx.reply("Использование: /whois <номер>"); const number=m[1]; const data=await whois(number); if(!data) return ctx.reply("Пользователь с таким номером не найден."); const {userId,profile}=data; const uname=profile?.username?`@${profile.username}`:"<без ника>"; const name=[profile?.first_name,profile?.last_name].filter(Boolean).join(" ")||"<без имени>"; return ctx.reply(`Номер <b>#${number}</b> выдан пользователю:\n`+`Имя: ${name}\n`+`Ник: ${uname}\n`+`ID: <code>${userId}</code>\n`+`В базе с: ${profile?.created_at||"—"} UTC`,{parse_mode:"HTML"}); });
-export default async function handler(req,res){ if(WEBHOOK_SECRET){ const header=req.headers["x-telegram-bot-api-secret-token"]; if(header!==WEBHOOK_SECRET){ return res.status(401).send("Invalid secret"); } } if(req.method==="POST"){ try{ await bot.handleUpdate(req.body); return res.status(200).json({ok:true}); }catch(e){ console.error("handleUpdate error",e); return res.status(500).json({ok:false}); } } return res.status(200).send("OK"); }
+  const number = await assignNumberIfNeeded(ctx.from);
+
+  await ctx.editMessageText(
+    `Подписка подтверждена! Ваш уникальный номер: <b>#${number}</b>\n\n` +
+      `Номер закреплён за Вашим аккаунтом и повторно выдан не будет.`,
+    { parse_mode: "HTML" }
+  );
+
+  // Дополнительное финальное сообщение
+  await ctx.reply(
+    "🎉 Спасибо за участие! Розыгрыш призов проводится ежедневно с 31 октября по 8 ноября в 12:00 мск в канале @podvigi — не пропустите!"
+  );
+}); // ← ВАЖНО: закрываем обработчик action
+
+bot.command("issued_count", async (ctx) => {
+  if (!isAdmin(ctx)) return;
+  const total = await countIssued();
+  await ctx.reply(`Выдано номеров: <b>${total}</b>`, { parse_mode: "HTML" });
+});
+
+bot.command("whois", async (ctx) => {
+  if (!isAdmin(ctx)) return;
+  const text = ctx.message.text || "";
+  const m = text.match(/\/(?:whois)\s+(\d+)/i);
+  if (!m) return ctx.reply("Использование: /whois <номер>");
+  const number = m[1];
+  const data = await whois(number);
+  if (!data) return ctx.reply("Пользователь с таким номером не найден.");
+  const { userId, profile } = data;
+  const uname = profile?.username ? `@${profile.username}` : "<без ника>";
+  const name = [profile?.first_name, profile?.last_name].filter(Boolean).join(" ") || "<без имени>";
+  await ctx.reply(
+    `Номер <b>#${number}</b> выдан пользователю:\n` +
+      `Имя: ${name}\n` +
+      `Ник: ${uname}\n` +
+      `ID: <code>${userId}</code>\n` +
+      `В базе с: ${profile?.created_at || "—"} UTC`,
+    { parse_mode: "HTML" }
+  );
+});
