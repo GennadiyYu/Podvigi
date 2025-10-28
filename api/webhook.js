@@ -8,7 +8,7 @@ const WEBHOOK_SECRET=process.env.TELEGRAM_WEBHOOK_SECRET;
 if(!BOT_TOKEN) throw new Error("BOT_TOKEN is required");
 const bot=new Telegraf(BOT_TOKEN,{handlerTimeout:9000});
 function isAdmin(ctx){ const u=ctx.from; if(!u) return false; return ADMIN_USERNAMES.includes((u.username||"").replace(/^@/,"")); }
-const defaultCommands=[{command:"start",description:"Начать / инструкция"},{command:"help",description:"Помощь"}];
+const defaultCommands=[{command:"start",description:"Начать / инструкция"}];
 const adminCommands=[{command:"issued_count",description:"Сколько номеров выдано"},{command:"whois",description:"По номеру — кто это"}];
 async function setCommandsForChat(ctx,isAdminFlag){ const scope={type:"chat",chat_id:ctx.chat.id}; const commands=isAdminFlag?[...defaultCommands,...adminCommands]:defaultCommands; try{ await ctx.telegram.setMyCommands(commands,{scope}); }catch(e){ console.warn("setMyCommands error:",e.message); } }
 bot.telegram.setMyCommands(defaultCommands).catch(()=>{});
