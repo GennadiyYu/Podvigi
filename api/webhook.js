@@ -7,6 +7,13 @@ const ADMIN_USERNAMES = (process.env.ADMIN_USERNAMES || "")
   .split(",")
   .map((s) => s.trim().replace(/^@/, ""))
   .filter(Boolean);
+// Экранируем текст для HTML сообщений (чтобы не ломались теги)
+const esc = (s) =>
+  String(s ?? "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;");
+
 const WEBHOOK_SECRET = process.env.TELEGRAM_WEBHOOK_SECRET;
 
 if (!BOT_TOKEN) throw new Error("BOT_TOKEN is required");
@@ -103,21 +110,32 @@ bot.command("issued_count", async (ctx) => {
 
 bot.command("whois", async (ctx) => {
   if (!isAdmin(ctx)) return;
+
   const text = ctx.message.text || "";
   const m = text.match(/\/(?:whois)\s+(\d+)/i);
   if (!m) return ctx.reply("Использование: /whois <номер>");
+
   const number = m[1];
   const data = await whois(number);
   if (!data) return ctx.reply("Пользователь с таким номером не найден.");
+
   const { userId, profile } = data;
-  const uname = profile?.username ? `@${profile.username}` : "<без ника>";
-  const name = [profile?.first_name, profile?.last_name].filter(Boolean).join(" ") || "<без имени>";
+
+  const uname = profile?.username
+    ? `@${esc(profile.username)}`
+    : "&lt;без ника&gt;";
+
+  const nameRaw = [profile?.first_name, profile?.last_name]
+    .filter(Boolean)
+    .join(" ");
+  const name = nameRaw ? esc(nameRaw) : "&lt;без имени&gt;";
+
   await ctx.reply(
-    `Номер <b>#${number}</b> выдан пользователю:\n` +
+    `Номер <b>#${esc(number)}</b> выдан пользователю:\n` +
       `Имя: ${name}\n` +
       `Ник: ${uname}\n` +
-      `ID: <code>${userId}</code>\n` +
-      `В базе с: ${profile?.created_at || "—"} UTC`,
+      `ID: <code>${esc(userId)}</code>\n` +
+      `В базе с: ${esc(profile?.created_at || "—")} UTC`,
     { parse_mode: "HTML" }
   );
 });
