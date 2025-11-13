@@ -3,6 +3,8 @@ import { assignNumberIfNeeded, countIssued, whois } from "../lib/db.js";
 
 const BOT_TOKEN = process.env.BOT_TOKEN;
 const CHANNEL = process.env.CHANNEL || "@podvigi";
+const EXPORT_SECRET = process.env.EXPORT_SECRET || process.env.TELEGRAM_WEBHOOK_SECRET;
+const PUBLIC_BASE_URL = process.env.PUBLIC_BASE_URL; // например, https://podvig.vercel.app
 const ADMIN_USERNAMES = (process.env.ADMIN_USERNAMES || "")
   .split(",")
   .map((s) => s.trim().replace(/^@/, ""))
@@ -34,6 +36,11 @@ const adminCommands = [
   { command: "issued_count", description: "Сколько номеров выдано" },
   { command: "whois", description: "По номеру — кто это" },
 ];
+const adminCommands = [
+  { command: "issued_count", description: "Сколько номеров выдано" },
+  { command: "whois", description: "По номеру — кто это" },
+  { command: "export_csv", description: "Скачать CSV пользователей" },
+];
 
 async function setCommandsForChat(ctx, isAdminFlag) {
   const scope = { type: "chat", chat_id: ctx.chat.id };
@@ -53,18 +60,39 @@ async function isSubscribed(ctx) {
 bot.telegram.setMyCommands(defaultCommands).catch(() => {});
 
 bot.start(async (ctx) => {
-  await setCommandsForChat(ctx, isAdmin(ctx));
+  const admin = isAdmin(ctx);
+  await setCommandsForChat(ctx, admin);
+
+  const keyboard = [
+    [{ text: "✅ Проверить подписку", callback_data: "check_sub" }],
+  ];
+
+  // только для админов — кнопка со ссылкой на CSV
+  if (admin && PUBLIC_BASE_URL && EXPORT_SECRET) {
+    const csvUrl = `${PUBLIC_BASE_URL}/api/export_csv?secret=${encodeURIComponent(EXPORT_SECRET)}`;
+    keyboard.push([{ text: "⬇️ Скачать CSV", url: csvUrl }]);
+  }
+
   await ctx.reply(
     `Приветствую! Я выдам Вам уникальный номер после проверки подписки на <b>${CHANNEL}</b>\n\n` +
       `1) Подпишитесь на канал ${CHANNEL}\n` +
       `2) Нажмите кнопку ниже для проверки подписки`,
     {
       parse_mode: "HTML",
-      reply_markup: {
-        inline_keyboard: [[{ text: "✅ Проверить подписку", callback_data: "check_sub" }]],
-      },
+      reply_markup: { inline_keyboard: keyboard },
     }
   );
+});
+
+bot.command("export_csv", async (ctx) => {
+  if (!isAdmin(ctx)) return;
+
+  if (!PUBLIC_BASE_URL || !EXPORT_SECRET) {
+    return ctx.reply("Экспорт временно недоступен: не настроены PUBLIC_BASE_URL или EXPORT_SECRET.");
+  }
+
+  const csvUrl = `${PUBLIC_BASE_URL}/api/export_csv?secret=${encodeURIComponent(EXPORT_SECRET)}`;
+  await ctx.reply(`Скачать CSV: ${csvUrl}`);
 });
 
 bot.command("refresh_menu", async (ctx) => {
