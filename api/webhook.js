@@ -9,12 +9,6 @@ const ADMIN_USERNAMES = (process.env.ADMIN_USERNAMES || "")
   .split(",")
   .map((s) => s.trim().replace(/^@/, ""))
   .filter(Boolean);
-// Экранируем текст для HTML сообщений (чтобы не ломались теги)
-const esc = (s) =>
-  String(s ?? "")
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;");
 
 const WEBHOOK_SECRET = process.env.TELEGRAM_WEBHOOK_SECRET;
 
@@ -28,19 +22,25 @@ function isAdmin(ctx) {
   return ADMIN_USERNAMES.includes((u.username || "").replace(/^@/, ""));
 }
 
+// Экранируем текст для HTML сообщений (чтобы не ломались теги)
+const esc = (s) =>
+  String(s ?? "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;");
+
+// ----- команды объявляем ОДИН раз -----
 const defaultCommands = [
   { command: "start", description: "Начать / инструкция" },
   { command: "help", description: "Помощь" },
 ];
-const adminCommands = [
-  { command: "issued_count", description: "Сколько номеров выдано" },
-  { command: "whois", description: "По номеру — кто это" },
-];
+
 const adminCommands = [
   { command: "issued_count", description: "Сколько номеров выдано" },
   { command: "whois", description: "По номеру — кто это" },
   { command: "export_csv", description: "Скачать CSV пользователей" },
 ];
+// --------------------------------------
 
 async function setCommandsForChat(ctx, isAdminFlag) {
   const scope = { type: "chat", chat_id: ctx.chat.id };
@@ -57,6 +57,7 @@ async function isSubscribed(ctx) {
   }
 }
 
+// Глобальные команды без админских
 bot.telegram.setMyCommands(defaultCommands).catch(() => {});
 
 bot.start(async (ctx) => {
@@ -118,9 +119,7 @@ bot.action("check_sub", async (ctx) => {
   const number = await assignNumberIfNeeded(ctx.from);
 
   await ctx.editMessageText(
-    `Подписка подтверждена! Ваш уникальный номер: 
-    
-    <b>${number}</b>\n\n` +
+    `Подписка подтверждена! Ваш уникальный номер: <b>#${esc(number)}</b>\n\n` +
       `Номер закреплён за Вашим аккаунтом и повторно выдан не будет.`,
     { parse_mode: "HTML" }
   );
@@ -133,7 +132,7 @@ bot.action("check_sub", async (ctx) => {
 bot.command("issued_count", async (ctx) => {
   if (!isAdmin(ctx)) return;
   const total = await countIssued();
-  await ctx.reply(`Выдано номеров: <b>${total}</b>`, { parse_mode: "HTML" });
+  await ctx.reply(`Выдано номеров: <b>${esc(total)}</b>`, { parse_mode: "HTML" });
 });
 
 bot.command("whois", async (ctx) => {
@@ -168,7 +167,7 @@ bot.command("whois", async (ctx) => {
   );
 });
 
-// ⬇⬇⬇ ОБЯЗАТЕЛЬНО: default export обработчика для Vercel
+// Обязательный экспорт обработчика для Vercel (ESM)
 export default async function handler(req, res) {
   if (WEBHOOK_SECRET) {
     const header = req.headers["x-telegram-bot-api-secret-token"];
